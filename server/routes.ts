@@ -216,18 +216,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Still processing
-      const progress = calculateProgress(transcriptionResult.status);
+      const progress = calculateProgress(transcriptionResult.status, storedTranscription.progress);
+      
+      console.log(`Transcription ${transcriptionId} status: ${transcriptionResult.status}, progress: ${storedTranscription.progress} -> ${progress}`);
       
       // Update progress in our stored transcription
       await storage.updateTranscription(transcriptionId, {
-        progress: Math.max(storedTranscription.progress, progress)
+        progress
       });
       
       // Return current status
       res.status(200).json({
         id: transcriptionId,
         status: "processing",
-        progress: Math.max(storedTranscription.progress, progress),
+        progress,
         sourceUrl: storedTranscription.sourceUrl,
         title: storedTranscription.title
       });
@@ -253,15 +255,19 @@ function formatTime(seconds: number): string {
 }
 
 // Helper function to calculate progress percentage
-function calculateProgress(status: string): number {
+function calculateProgress(status: string, previousProgress: number = 0): number {
   switch (status) {
     case "queued":
-      return 10;
+      return Math.max(previousProgress, 40);
     case "processing":
-      return 50;
+      // Increment progressively from 40 to 80 based on previous progress
+      if (previousProgress < 40) return 40;
+      if (previousProgress < 80) return previousProgress + 5; // Increment by 5%
+      return 80;
     case "completed":
       return 100;
     default:
-      return 25;
+      // For unknown states, keep advancing if we already have progress
+      return Math.max(previousProgress, 25);
   }
 }

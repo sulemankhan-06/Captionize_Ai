@@ -8,14 +8,19 @@ const ASSEMBLY_AI_API_URL = 'https://api.assemblyai.com/v2';
 
 // Create headers with authorization
 const getAuthHeaders = (contentType?: string): Record<string, string> => {
+  if (!ASSEMBLY_AI_API_KEY) {
+    console.error("AssemblyAI API key is not set");
+  }
+  
   const headers: Record<string, string> = {
-    'authorization': ASSEMBLY_AI_API_KEY || ''
+    'authorization': `Bearer ${ASSEMBLY_AI_API_KEY}` || ''
   };
   
   if (contentType) {
     headers['content-type'] = contentType;
   }
   
+  console.debug("Using AssemblyAI API headers:", { ...headers, authorization: headers.authorization ? 'PRESENT' : 'MISSING' });
   return headers;
 };
 
@@ -70,7 +75,11 @@ export async function transcribeAudio(filePath: string): Promise<string> {
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to submit transcription request: ${response.statusText}`);
+      // Get more detailed error information
+      const errorDetails = await response.text();
+      console.error(`AssemblyAI API error: ${response.status} ${response.statusText}`, errorDetails);
+      
+      throw new Error(`Failed to submit transcription request: ${response.statusText} - ${errorDetails}`);
     }
     
     const data = await response.json();

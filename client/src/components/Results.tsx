@@ -43,11 +43,15 @@ export default function Results({ transcription, onRetry }: ResultsProps) {
           <div className="w-full max-w-md mt-6">
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
               <span>
-                {transcription.progress < 33 && "Extracting audio..."}
-                {transcription.progress >= 33 && transcription.progress < 66 && "Processing audio..."}
-                {transcription.progress >= 66 && "Generating captions..."}
+                {transcription.progress < 40 && "Extracting audio..."}
+                {transcription.progress >= 40 && transcription.progress < 80 && "Processing audio..."}
+                {transcription.progress >= 80 && "Generating captions..."}
               </span>
-              <span>Step {Math.min(Math.ceil(transcription.progress / 33), 3)}/3</span>
+              <span>
+                {transcription.progress < 40 && "Step 1/3"}
+                {transcription.progress >= 40 && transcription.progress < 80 && "Step 2/3"}
+                {transcription.progress >= 80 && "Step 3/3"}
+              </span>
             </div>
             <div className="h-2 w-full bg-card rounded-full overflow-hidden">
               <div 

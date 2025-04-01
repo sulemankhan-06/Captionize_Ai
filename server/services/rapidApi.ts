@@ -154,6 +154,36 @@ export async function downloadAudioFromUrl(url: string, outputPath: string): Pro
       
       return 0;
     })[0];
+    
+    // If we didn't find a proper audio link but got a YouTube URL, try extracting directly
+    if ((!bestAudioLink || !bestAudioLink.url) && apiResponse.url && apiResponse.url.includes('youtube.com')) {
+      console.log("Using direct YouTube URL extraction fallback");
+      
+      try {
+        // Get audio-only formats from the medias array if available
+        if (apiResponse.medias && Array.isArray(apiResponse.medias)) {
+          const audioItems = apiResponse.medias.filter((media: any) => 
+            media.mimeType && media.mimeType.toLowerCase().includes('audio') &&
+            media.url && typeof media.url === 'string'
+          );
+          
+          if (audioItems.length > 0) {
+            // Sort by quality
+            const bestAudio = audioItems.sort((a: any, b: any) => 
+              (b.bitrate || 0) - (a.bitrate || 0)
+            )[0];
+            
+            if (bestAudio && bestAudio.url) {
+              console.log("Found direct audio URL in medias array");
+              audioLinks.push(bestAudio);
+              return bestAudio;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error in YouTube fallback extraction:", error);
+      }
+    }
 
     console.log(`Selected download URL: ${bestAudioLink.url.substring(0, 50)}...`);
 

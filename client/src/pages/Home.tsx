@@ -89,9 +89,10 @@ export default function Home() {
         const response = await fetch(`/api/transcribe/${id}`);
         const data = await response.json();
         
-        // Update progress
+        // Update progress and keep status synchronized
         setTranscription(prev => ({
           ...prev,
+          status: data.status || prev.status,
           progress: data.progress || prev.progress,
         }));
 
@@ -189,7 +190,10 @@ export default function Home() {
                   
                   <URLInput onSubmit={handleURLSubmit} isProcessing={transcription.status === "processing"} />
                   
-                  <ProcessingSteps />
+                  <ProcessingSteps 
+                    progress={transcription.progress} 
+                    status={transcription.status} 
+                  />
                   
                   <Results 
                     transcription={transcription}
