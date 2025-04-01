@@ -14,7 +14,7 @@ const execAsync = promisify(exec);
 
 /**
  * Extract audio from a video using ffmpeg
- * @param videoUrl URL of the video
+ * @param videoUrl URL of the video (must be a direct media URL, not a YouTube page URL)
  * @param outputPath Path where the audio file will be saved
  */
 async function extractAudioWithFfmpeg(videoUrl: string, outputPath: string): Promise<void> {
@@ -26,7 +26,12 @@ async function extractAudioWithFfmpeg(videoUrl: string, outputPath: string): Pro
     fs.mkdirSync(parentDir, { recursive: true });
   }
   
-  // Use ffmpeg to download the video and extract audio directly
+  // Validate that we're not trying to use ffmpeg on a YouTube page URL
+  if (videoUrl.includes('youtube.com/watch') || videoUrl.includes('youtu.be/')) {
+    throw new Error('Cannot use ffmpeg directly on YouTube page URLs. A direct media URL is required.');
+  }
+  
+  // Use ffmpeg to extract audio from the direct media URL
   const command = `ffmpeg -y -i "${videoUrl}" -vn -acodec libmp3lame -ab 128k "${outputPath}"`;
   
   try {
@@ -109,6 +114,15 @@ export async function downloadAudioFromUrl(url: string, outputPath: string): Pro
     // Define common audio format IDs and extensions to look for
     const audioFormatIds = ['140', '141', '171', '249', '250', '251', 'm4a', 'mp3', 'weba'];
     const audioExtensions = ['mp3', 'm4a', 'aac', 'ogg', 'weba', 'opus', 'wav'];
+    
+    // For debugging - log the API response structure
+    console.log('API Response keys:', Object.keys(apiResponse));
+    if (apiResponse.medias) {
+      console.log('Media items count:', apiResponse.medias.length);
+      if (apiResponse.medias.length > 0) {
+        console.log('First media item keys:', Object.keys(apiResponse.medias[0]));
+      }
+    }
     
     // Check for YouTube-specific medias array first (most reliable for YouTube)
     if (apiResponse && apiResponse.medias && Array.isArray(apiResponse.medias)) {
@@ -314,18 +328,23 @@ export async function downloadAudioFromUrl(url: string, outputPath: string): Pro
       } catch (error) {
         console.error('Error downloading audio with fetch:', error);
         
-        // If direct download fails, try with ffmpeg as fallback
+        // For YouTube URLs, we can't use ffmpeg directly on the YouTube page URL
+        // Since the direct download failed, we have to report the error
         if (url.includes('youtube.com') || url.includes('youtu.be')) {
-          console.log('Attempting ffmpeg extraction as fallback...');
-          await extractAudioWithFfmpeg(url, outputPath);
+          console.error('Failed to download audio from YouTube URL and cannot use ffmpeg directly on YouTube URLs');
+          throw new Error('Failed to extract audio from YouTube URL: ' + (error instanceof Error ? error.message : String(error)));
+        } else if (bestAudioLink && bestAudioLink.url) {
+          // For non-YouTube URLs with a direct media URL, try ffmpeg as fallback
+          console.log('Attempting ffmpeg extraction as fallback with the media URL...');
+          await extractAudioWithFfmpeg(bestAudioLink.url, outputPath);
         } else {
-          throw error; // Re-throw if not a YouTube URL
+          throw error; // Re-throw if we don't have a URL to work with
         }
       }
     } else {
-      // No usable audio link, try ffmpeg directly
-      console.log('No usable audio link found, attempting direct ffmpeg extraction...');
-      await extractAudioWithFfmpeg(url, outputPath);
+      // No usable audio link found, we can't proceed
+      console.error('No usable audio links found in API response');
+      throw new Error('Could not find any audio download links in the API response');
     }
 
     // Return metadata
