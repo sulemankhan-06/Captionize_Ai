@@ -66,30 +66,77 @@ export async function downloadAudioFromUrl(url: string, outputPath: string): Pro
     
     console.log('Response received from RapidAPI');
     
-    // Check if response has expected structure
-    if (!apiResponse || !apiResponse.links || !Array.isArray(apiResponse.links)) {
-      console.error('Unexpected response structure:', JSON.stringify(apiResponse));
-      throw new Error('Invalid response structure from RapidAPI');
-    }
+    console.log('API Response:', JSON.stringify(apiResponse).substring(0, 500) + '...');
     
-    // Find suitable audio links
-    const audioLinks = apiResponse.links.filter((link: any) => 
-      (link.type?.toLowerCase().includes('audio') || 
-      link.mime_type?.toLowerCase().includes('audio') ||
-      link.extension?.toLowerCase() === 'mp3') &&
-      link.url // Ensure URL exists
-    );
+    // Handle different response structures
+    let audioLinks = [];
+    
+    // Check for typical links array structure
+    if (apiResponse && apiResponse.links && Array.isArray(apiResponse.links)) {
+      // Original structure with links array
+      audioLinks = apiResponse.links.filter((link: any) => 
+        (link.type?.toLowerCase().includes('audio') || 
+        link.mime_type?.toLowerCase().includes('audio') ||
+        link.extension?.toLowerCase() === 'mp3') &&
+        link.url // Ensure URL exists
+      );
+    } 
+    // Alternative structure with results property
+    else if (apiResponse && apiResponse.result && typeof apiResponse.result === 'object') {
+      // Some responses might have a 'result' object with URLs
+      if (Array.isArray(apiResponse.result)) {
+        audioLinks = apiResponse.result.filter((item: any) => 
+          item && item.url && typeof item.url === 'string'
+        );
+      } else if (apiResponse.result.formats && Array.isArray(apiResponse.result.formats)) {
+        // Structure might have formats array
+        audioLinks = apiResponse.result.formats.filter((format: any) => 
+          (format.mimeType?.toLowerCase().includes('audio') || 
+          format.extension?.toLowerCase() === 'mp3' ||
+          format.formatId?.toString().includes('251')) && // Common audio format ID
+          format.url
+        );
+      }
+    }
+    // Direct array response
+    else if (Array.isArray(apiResponse)) {
+      audioLinks = apiResponse.filter((item: any) => 
+        item && item.url && typeof item.url === 'string' &&
+        (item.mimeType?.toLowerCase().includes('audio') || 
+        item.extension?.toLowerCase() === 'mp3' ||
+        item.formatId?.toString().includes('251'))
+      );
+    }
     
     console.log(`Found ${audioLinks.length} audio links in response`);
     
     if (audioLinks.length === 0) {
-      // If no audio links found, try to use any link with a downloadable URL
-      const anyDownloadLinks = apiResponse.links.filter((link: any) => link.url && typeof link.url === 'string');
+      console.log('No specific audio links found, searching for any downloadable URL');
+      
+      // Try different structures to find any URL
+      let anyDownloadLinks: any[] = [];
+      
+      if (apiResponse && apiResponse.links && Array.isArray(apiResponse.links)) {
+        anyDownloadLinks = apiResponse.links.filter((link: any) => link.url && typeof link.url === 'string');
+      } else if (apiResponse && apiResponse.result) {
+        if (Array.isArray(apiResponse.result)) {
+          anyDownloadLinks = apiResponse.result.filter((item: any) => item && item.url && typeof item.url === 'string');
+        } else if (apiResponse.result.formats && Array.isArray(apiResponse.result.formats)) {
+          anyDownloadLinks = apiResponse.result.formats.filter((format: any) => format && format.url && typeof format.url === 'string');
+        } else if (apiResponse.result.url && typeof apiResponse.result.url === 'string') {
+          anyDownloadLinks = [apiResponse.result];
+        }
+      } else if (Array.isArray(apiResponse)) {
+        anyDownloadLinks = apiResponse.filter((item: any) => item && item.url && typeof item.url === 'string');
+      } else if (apiResponse && apiResponse.url && typeof apiResponse.url === 'string') {
+        anyDownloadLinks = [apiResponse];
+      }
       
       if (anyDownloadLinks.length > 0) {
-        console.log('No audio links found, using first available download link');
+        console.log('Found general download links, using the first available one');
         audioLinks.push(anyDownloadLinks[0]);
       } else {
+        console.error('Complete API response:', JSON.stringify(apiResponse));
         throw new Error('No download links found in the response');
       }
     }

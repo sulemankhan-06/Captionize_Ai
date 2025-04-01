@@ -6,6 +6,19 @@ import { TranscriptionResult } from '@shared/schema';
 const ASSEMBLY_AI_API_KEY = process.env.ASSEMBLY_AI_API_KEY;
 const ASSEMBLY_AI_API_URL = 'https://api.assemblyai.com/v2';
 
+// Create headers with authorization
+const getAuthHeaders = (contentType?: string): Record<string, string> => {
+  const headers: Record<string, string> = {
+    'authorization': ASSEMBLY_AI_API_KEY || ''
+  };
+  
+  if (contentType) {
+    headers['content-type'] = contentType;
+  }
+  
+  return headers;
+};
+
 /**
  * Upload an audio file to AssemblyAI
  */
@@ -15,10 +28,7 @@ async function uploadAudioFile(filePath: string): Promise<string> {
     
     const response = await fetch(`${ASSEMBLY_AI_API_URL}/upload`, {
       method: 'POST',
-      headers: {
-        'authorization': ASSEMBLY_AI_API_KEY,
-        'content-type': 'application/octet-stream'
-      },
+      headers: getAuthHeaders('application/octet-stream'),
       body: fileContent
     });
     
@@ -45,10 +55,7 @@ export async function transcribeAudio(filePath: string): Promise<string> {
     // Then, submit the transcription request
     const response = await fetch(`${ASSEMBLY_AI_API_URL}/transcript`, {
       method: 'POST',
-      headers: {
-        'authorization': ASSEMBLY_AI_API_KEY,
-        'content-type': 'application/json'
-      },
+      headers: getAuthHeaders('application/json'),
       body: JSON.stringify({
         audio_url: uploadUrl,
         word_boost: ["AI", "caption", "transcription", "neural network"],
@@ -81,9 +88,7 @@ export async function getTranscriptionStatus(transcriptionId: string): Promise<T
   try {
     const response = await fetch(`${ASSEMBLY_AI_API_URL}/transcript/${transcriptionId}`, {
       method: 'GET',
-      headers: {
-        'authorization': ASSEMBLY_AI_API_KEY
-      }
+      headers: getAuthHeaders()
     });
     
     if (!response.ok) {
