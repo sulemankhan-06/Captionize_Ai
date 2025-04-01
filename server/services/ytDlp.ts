@@ -36,8 +36,17 @@ export async function downloadVideoFromUrl(url: string): Promise<VideoMetadata> 
     // -S +size,+br,+res,+fps sorts by size, bitrate, resolution, and fps
     // -x extracts audio only
     // --audio-format mp3 converts to mp3 format
+    // Using the latest yt-dlp executable we downloaded
+    const ytDlpPath = '/home/runner/bin/yt-dlp';
+    
+    // Execute yt-dlp with additional options to help with YouTube restrictions
+    // --force-ipv4 to avoid some IPv6 issues
+    // --geo-bypass to bypass geo-restrictions
+    // --no-check-certificate to bypass SSL verification issues
+    // --extractor-retries 3 to retry extracting information up to 3 times
+    // --ignore-errors to continue even if there are non-fatal errors
     const { stdout } = await execAsync(
-      `yt-dlp -S +size,+br,+res,+fps -x --audio-format mp3 -o "${outputTemplate}" "${url}"`,
+      `${ytDlpPath} -S +size,+br,+res,+fps -x --audio-format mp3 --force-ipv4 --geo-bypass --no-check-certificate --extractor-retries 3 --ignore-errors -o "${outputTemplate}" "${url}"`,
       { maxBuffer: 10 * 1024 * 1024 } // 10MB buffer for large outputs
     );
     
@@ -56,7 +65,7 @@ export async function downloadVideoFromUrl(url: string): Promise<VideoMetadata> 
     
     // Extract metadata using yt-dlp
     const { stdout: metadataOutput } = await execAsync(
-      `yt-dlp --print title --print duration --print channel "${url}"`,
+      `${ytDlpPath} --print title --print duration --print channel --force-ipv4 --geo-bypass --no-check-certificate --extractor-retries 3 --ignore-errors "${url}"`,
       { maxBuffer: 1024 * 1024 } // 1MB buffer
     );
     
@@ -70,8 +79,23 @@ export async function downloadVideoFromUrl(url: string): Promise<VideoMetadata> 
       author,
       filePath
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error downloading video with yt-dlp:', error);
+    
+    // Add more descriptive error message based on yt-dlp errors
+    if (error.stderr && typeof error.stderr === 'string') {
+      if (error.stderr.includes('HTTP Error 403: Forbidden')) {
+        throw new Error('Access to this video is forbidden. It may be private or region-restricted.');
+      } else if (error.stderr.includes('This video is unavailable')) {
+        throw new Error('This video is unavailable. It may have been removed or made private.');
+      } else if (error.stderr.includes('Sign in to confirm your age')) {
+        throw new Error('This video requires age verification and cannot be accessed.');
+      } else if (error.stderr.includes('ERROR: unable to download')) {
+        throw new Error('Unable to download the video due to access restrictions or network issues.');
+      }
+    }
+    
+    // Fallback to original error
     throw error;
   }
 }
