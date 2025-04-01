@@ -10,17 +10,23 @@ const ASSEMBLY_AI_API_URL = 'https://api.assemblyai.com/v2';
 const getAuthHeaders = (contentType?: string): Record<string, string> => {
   if (!ASSEMBLY_AI_API_KEY) {
     console.error("AssemblyAI API key is not set");
+    throw new Error("AssemblyAI API key is missing. Please set the ASSEMBLY_AI_API_KEY environment variable.");
   }
   
+  // Make sure to include "Bearer " prefix for the Authorization header
   const headers: Record<string, string> = {
-    'authorization': `Bearer ${ASSEMBLY_AI_API_KEY}` || ''
+    'authorization': `Bearer ${ASSEMBLY_AI_API_KEY}`
   };
   
   if (contentType) {
     headers['content-type'] = contentType;
   }
   
-  console.debug("Using AssemblyAI API headers:", { ...headers, authorization: headers.authorization ? 'PRESENT' : 'MISSING' });
+  console.log("Using AssemblyAI API headers:", { 
+    ...headers, 
+    authorization: headers.authorization.startsWith('Bearer ') ? 'PRESENT (with Bearer prefix)' : 'MISSING BEARER PREFIX' 
+  });
+  
   return headers;
 };
 

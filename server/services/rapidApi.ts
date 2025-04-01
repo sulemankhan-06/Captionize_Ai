@@ -142,7 +142,7 @@ export async function downloadAudioFromUrl(url: string, outputPath: string): Pro
     }
 
     // Sort by quality and prefer mp3
-    const bestAudioLink = audioLinks.sort((a: any, b: any) => {
+    let bestAudioLink = audioLinks.sort((a: any, b: any) => {
       // Prefer MP3
       if (a.extension === 'mp3' && b.extension !== 'mp3') return -1;
       if (a.extension !== 'mp3' && b.extension === 'mp3') return 1;
@@ -155,33 +155,73 @@ export async function downloadAudioFromUrl(url: string, outputPath: string): Pro
       return 0;
     })[0];
     
-    // If we didn't find a proper audio link but got a YouTube URL, try extracting directly
-    if ((!bestAudioLink || !bestAudioLink.url) && apiResponse.url && apiResponse.url.includes('youtube.com')) {
-      console.log("Using direct YouTube URL extraction fallback");
+    // If we have YouTube-specific response format, try to extract the best audio format
+    if (apiResponse.source && apiResponse.source === 'youtube') {
+      console.log("Processing YouTube-specific response format");
       
       try {
-        // Get audio-only formats from the medias array if available
+        // Check for medias array (common in YouTube responses)
         if (apiResponse.medias && Array.isArray(apiResponse.medias)) {
-          const audioItems = apiResponse.medias.filter((media: any) => 
-            media.mimeType && media.mimeType.toLowerCase().includes('audio') &&
+          console.log(`Found ${apiResponse.medias.length} media items in YouTube response`);
+          
+          // First look for audio-only formats
+          const audioOnlyItems = apiResponse.medias.filter((media: any) => 
+            ((media.type && media.type.toLowerCase().includes('audio')) || 
+             (media.mimeType && media.mimeType.toLowerCase().includes('audio')) ||
+             (media.formatId && ['139', '140', '141', '249', '250', '251'].includes(media.formatId.toString()))) &&
             media.url && typeof media.url === 'string'
           );
           
-          if (audioItems.length > 0) {
-            // Sort by quality
-            const bestAudio = audioItems.sort((a: any, b: any) => 
+          // If we found audio-only formats, use the highest quality one
+          if (audioOnlyItems.length > 0) {
+            console.log(`Found ${audioOnlyItems.length} audio-only items`);
+            
+            // Sort by bitrate (higher = better quality)
+            audioOnlyItems.sort((a: any, b: any) => 
               (b.bitrate || 0) - (a.bitrate || 0)
-            )[0];
+            );
+            
+            const bestAudio = audioOnlyItems[0];
             
             if (bestAudio && bestAudio.url) {
-              console.log("Found direct audio URL in medias array");
-              audioLinks.push(bestAudio);
-              return bestAudio;
+              console.log(`Selected audio format: ${bestAudio.formatId || 'unknown'}, bitrate: ${bestAudio.bitrate || 'unknown'}`);
+              
+              // This is now our preferred audio link
+              audioLinks = [bestAudio];
+              bestAudioLink = bestAudio;
+            }
+          } 
+          // If no audio-only formats, try video formats with audio 
+          else if (apiResponse.medias.length > 0 && (!bestAudioLink || !bestAudioLink.url)) {
+            console.log("No audio-only formats found, looking for video formats with audio");
+            
+            // Filter for formats that likely have audio (avoid formats known to be audio-less)
+            const videoWithAudioItems = apiResponse.medias.filter((media: any) => 
+              media.url && typeof media.url === 'string' &&
+              (!media.formatId || !['160', '133', '134', '135', '136'].includes(media.formatId.toString()))
+            );
+            
+            if (videoWithAudioItems.length > 0) {
+              // Prefer lower quality video to save bandwidth but still get audio
+              // Sort by height (lower resolution = smaller file = faster download)
+              videoWithAudioItems.sort((a: any, b: any) => 
+                (a.height || 1080) - (b.height || 1080)
+              );
+              
+              const smallestVideoWithAudio = videoWithAudioItems[0];
+              
+              if (smallestVideoWithAudio && smallestVideoWithAudio.url) {
+                console.log(`Selected video format with audio: ${smallestVideoWithAudio.formatId || 'unknown'}, resolution: ${smallestVideoWithAudio.height || 'unknown'}p`);
+                
+                // This is now our preferred audio link
+                audioLinks = [smallestVideoWithAudio];
+                bestAudioLink = smallestVideoWithAudio;
+              }
             }
           }
         }
       } catch (error) {
-        console.error("Error in YouTube fallback extraction:", error);
+        console.error("Error in YouTube format extraction:", error);
       }
     }
 

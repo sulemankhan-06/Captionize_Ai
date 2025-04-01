@@ -65,13 +65,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Second step: Send audio to AssemblyAI for transcription
       console.log(`Sending audio to AssemblyAI for transcription`);
-      const transcriptionId = await transcribeAudio(tempAudioPath);
       
-      // Update transcription with AssemblyAI ID and progress
-      await storage.updateTranscription(newTranscription.id, {
-        metadata: { assemblyAiId: transcriptionId },
-        progress: 66 // Indicate progress after submission to AssemblyAI
-      });
+      try {
+        const transcriptionId = await transcribeAudio(tempAudioPath);
+        
+        // Update transcription with AssemblyAI ID and progress
+        await storage.updateTranscription(newTranscription.id, {
+          metadata: { assemblyAiId: transcriptionId },
+          progress: 66 // Indicate progress after submission to AssemblyAI
+        });
+      } catch (apiError) {
+        console.error('Error with AssemblyAI transcription:', apiError);
+        
+        // Handle authorization issues specifically
+        if (apiError.message && (
+            apiError.message.includes('authorization') || 
+            apiError.message.includes('Unauthorized') || 
+            apiError.message.includes('API key')
+          )) {
+          await storage.updateTranscription(newTranscription.id, {
+            status: "failed",
+            error: "Authorization failed with transcription service. Please check API key."
+          });
+          
+          res.status(401).json({ 
+            message: "Authorization failed with transcription service. Please check API key.",
+            id: newTranscription.id,
+            status: "failed"
+          });
+          return;
+        }
+        
+        // Handle other API errors
+        await storage.updateTranscription(newTranscription.id, {
+          status: "failed",
+          error: `Transcription service error: ${apiError.message || 'Unknown error'}`
+        });
+        
+        res.status(500).json({ 
+          message: "Failed to process audio with transcription service",
+          error: apiError.message || 'Unknown error',
+          id: newTranscription.id,
+          status: "failed"
+        });
+        return;
+      }
       
       // Return the transcription ID and initial status
       res.status(200).json({
