@@ -3,7 +3,7 @@ import fs from 'fs';
 import FormData from 'form-data';
 import { TranscriptionResult } from '@shared/schema';
 
-const ASSEMBLY_AI_API_KEY = process.env.ASSEMBLY_AI_API_KEY || "your-assembly-ai-key";
+const ASSEMBLY_AI_API_KEY = process.env.ASSEMBLY_AI_API_KEY;
 const ASSEMBLY_AI_API_URL = 'https://api.assemblyai.com/v2';
 
 /**

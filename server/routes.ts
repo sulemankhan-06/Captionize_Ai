@@ -29,35 +29,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const { url } = validateUrl.data;
+      console.log(`Processing transcription request for URL: ${url}`);
+      
+      // Create a new transcription record first to track progress
+      const newTranscription = await storage.createTranscription({
+        sourceUrl: url,
+        title: "Processing..."
+      });
+      
+      // Generate a unique temporary file path for the audio
+      const tempAudioPath = path.join(TEMP_DIR, `${uuidv4()}.mp3`);
       
       // First step: Download audio from the video URL
-      const tempAudioPath = path.join(TEMP_DIR, `${uuidv4()}.mp3`);
+      console.log(`Downloading audio to ${tempAudioPath}`);
       const metadata = await downloadAudioFromUrl(url, tempAudioPath);
       
       if (!metadata || !fs.existsSync(tempAudioPath)) {
+        // Update transcription status to failed
+        await storage.updateTranscription(newTranscription.id, {
+          status: "failed",
+          error: "Failed to extract audio from the provided URL"
+        });
+        
         return res.status(400).json({ 
           message: "Failed to extract audio from the provided URL" 
         });
       }
       
+      // Update transcription with metadata
+      await storage.updateTranscription(newTranscription.id, {
+        title: metadata.title || "Video Transcription",
+        duration: metadata.duration,
+        progress: 33 // Indicate progress after audio extraction
+      });
+      
       // Second step: Send audio to AssemblyAI for transcription
+      console.log(`Sending audio to AssemblyAI for transcription`);
       const transcriptionId = await transcribeAudio(tempAudioPath);
       
-      // Create a new transcription record
-      const newTranscription = await storage.createTranscription({
-        sourceUrl: url,
-        title: metadata.title || "Video Transcription"
+      // Update transcription with AssemblyAI ID and progress
+      await storage.updateTranscription(newTranscription.id, {
+        metadata: { assemblyAiId: transcriptionId },
+        progress: 66 // Indicate progress after submission to AssemblyAI
       });
       
       // Return the transcription ID and initial status
       res.status(200).json({
-        id: transcriptionId,
+        id: newTranscription.id,
         status: "processing",
         sourceUrl: url,
+        progress: 66,
         title: metadata.title || "Video Transcription"
       });
       
       // Clean up temporary file
+      console.log(`Cleaning up temporary file ${tempAudioPath}`);
       fs.unlinkSync(tempAudioPath);
       
     } catch (error) {
@@ -74,17 +100,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const transcriptionId = req.params.id;
       
-      // Get transcription status from AssemblyAI
-      const transcriptionResult = await getTranscriptionStatus(transcriptionId);
+      // First get our stored transcription
+      const storedTranscription = await storage.getTranscription(transcriptionId);
       
-      if (!transcriptionResult) {
+      if (!storedTranscription) {
         return res.status(404).json({ message: "Transcription not found" });
       }
       
-      if (transcriptionResult.status === "error") {
+      // Get the AssemblyAI transcription ID from metadata
+      const assemblyAiId = storedTranscription.metadata?.assemblyAiId as string;
+      
+      if (!assemblyAiId) {
         return res.status(400).json({ 
           status: "failed",
-          error: "Transcription failed: " + (transcriptionResult.error || "Unknown error")
+          error: "Missing AssemblyAI transcription ID"
+        });
+      }
+      
+      // Get transcription status from AssemblyAI
+      console.log(`Checking status for AssemblyAI transcription ${assemblyAiId}`);
+      const transcriptionResult = await getTranscriptionStatus(assemblyAiId);
+      
+      if (!transcriptionResult) {
+        await storage.updateTranscription(transcriptionId, {
+          status: "failed",
+          error: "Transcription not found at AssemblyAI"
+        });
+        
+        return res.status(404).json({ 
+          message: "Transcription not found at AssemblyAI"
+        });
+      }
+      
+      if (transcriptionResult.status === "error") {
+        const errorMsg = "Transcription failed: " + (transcriptionResult.error || "Unknown error");
+        
+        // Update our stored transcription
+        await storage.updateTranscription(transcriptionId, {
+          status: "failed",
+          error: errorMsg
+        });
+        
+        return res.status(400).json({ 
+          status: "failed",
+          error: errorMsg
         });
       }
       
@@ -93,8 +152,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const words = transcriptionResult.words || [];
         
         // Group words into captions (roughly 5-10 words per caption)
-        const captions = [];
-        let currentCaption = { id: 1, start: "", text: "", words: [] };
+        const captions: Array<{id: number, start: string, text: string}> = [];
+        
+        interface CaptionWord {
+          text: string;
+          start: number;
+          end: number;
+          confidence: number;
+        }
+        
+        let currentCaption: {
+          id: number;
+          start: string;
+          text: string;
+          words: CaptionWord[];
+        } = { id: 1, start: "", text: "", words: [] };
         
         for (let i = 0; i < words.length; i++) {
           const word = words[i];
@@ -124,26 +196,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Generate SRT content
         const srtContent = formatToSRT(words);
         
-        // Return complete transcription data
-        return res.status(200).json({
-          id: transcriptionId,
+        // Update our stored transcription
+        const updatedTranscription = await storage.updateTranscription(transcriptionId, {
           status: "completed",
           progress: 100,
           captions,
           srtContent,
-          sourceUrl: transcriptionResult.audio_url,
-          title: transcriptionResult.text?.substring(0, 50) + "...",
-          duration: transcriptionResult.audio_duration
+          title: transcriptionResult.text?.substring(0, 40) + "..." || storedTranscription.title,
+          duration: transcriptionResult.audio_duration || storedTranscription.duration
+        });
+        
+        // Return complete transcription data
+        return res.status(200).json({
+          ...updatedTranscription,
+          id: transcriptionId,
+          status: "completed",
+          progress: 100
         });
       }
       
       // Still processing
       const progress = calculateProgress(transcriptionResult.status);
       
+      // Update progress in our stored transcription
+      await storage.updateTranscription(transcriptionId, {
+        progress: Math.max(storedTranscription.progress, progress)
+      });
+      
+      // Return current status
       res.status(200).json({
         id: transcriptionId,
         status: "processing",
-        progress
+        progress: Math.max(storedTranscription.progress, progress),
+        sourceUrl: storedTranscription.sourceUrl,
+        title: storedTranscription.title
       });
       
     } catch (error) {

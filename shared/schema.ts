@@ -76,6 +76,9 @@ export const transcriptionResultSchema = z.object({
     confidence: z.number()
   })).optional(),
   status: z.string(),
+  error: z.string().optional(),
+  audio_url: z.string().optional(),
+  audio_duration: z.number().optional(),
   utterances: z.array(z.object({
     start: z.number(),
     end: z.number(),
