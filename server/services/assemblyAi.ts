@@ -8,14 +8,12 @@ const ASSEMBLY_AI_API_URL = 'https://api.assemblyai.com/v2';
 
 // Create headers with authorization
 const getAuthHeaders = (contentType?: string): Record<string, string> => {
-  // Make sure we're not trying to use 'Bearer undefined'
   if (!ASSEMBLY_AI_API_KEY) {
     console.error("AssemblyAI API key is not set");
-    throw new Error("AssemblyAI API key is not set. Please ensure ASSEMBLY_AI_API_KEY is properly configured.");
   }
   
   const headers: Record<string, string> = {
-    'authorization': `Bearer ${ASSEMBLY_AI_API_KEY}`
+    'authorization': `Bearer ${ASSEMBLY_AI_API_KEY}` || ''
   };
   
   if (contentType) {
