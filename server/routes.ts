@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { urlSchema } from "../shared/schema";
-import { downloadAudioFromUrl } from "./services/rapidApi";
+import { downloadVideoFromUrl, cleanupFile } from "./services/ytDlp";
 import { transcribeAudio, getTranscriptionStatus } from "./services/assemblyAi";
 import { formatToSRT } from "./utils/srtFormatter";
 import fs from "fs";
@@ -37,12 +37,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: "Processing..."
       });
       
-      // Generate a unique temporary file path for the audio
-      const tempAudioPath = path.join(TEMP_DIR, `${uuidv4()}.mp3`);
+      // First step: Download video and extract audio using yt-dlp
+      console.log(`Downloading video from ${url} using yt-dlp`);
       
-      // First step: Download audio from the video URL
-      console.log(`Downloading audio to ${tempAudioPath}`);
-      const metadata = await downloadAudioFromUrl(url, tempAudioPath);
+      // Download video and extract audio
+      const metadata = await downloadVideoFromUrl(url);
+      const tempAudioPath = metadata.filePath;
       
       if (!metadata || !fs.existsSync(tempAudioPath)) {
         // Update transcription status to failed
@@ -74,7 +74,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: { assemblyAiId: transcriptionId },
           progress: 66 // Indicate progress after submission to AssemblyAI
         });
-      } catch (apiError) {
+      } catch (apiError: any) {
         console.error('Error with AssemblyAI transcription:', apiError);
         
         // Handle authorization issues specifically
@@ -122,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Clean up temporary file
       console.log(`Cleaning up temporary file ${tempAudioPath}`);
-      fs.unlinkSync(tempAudioPath);
+      cleanupFile(tempAudioPath);
       
     } catch (error) {
       console.error('Error processing transcription request:', error);
