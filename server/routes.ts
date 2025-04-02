@@ -424,10 +424,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-// Helper function to format time for display exactly as received from AssemblyAI
+// Helper function to format time in seconds to display
 function formatTime(seconds: number): string {
-  // For exact consistency with AssemblyAI API, just convert the seconds to string
-  return seconds.toString();
+  // Format in proper SRT format: HH:MM:SS,mmm
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 1000);
+  
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
 }
 
 // Helper function to calculate progress percentage

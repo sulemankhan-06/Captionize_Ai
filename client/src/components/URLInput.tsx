@@ -65,7 +65,7 @@ export default function URLInput({ onSubmit, isProcessing }: URLInputProps) {
                         <Input
                           {...field}
                           className="w-full bg-background/50 border border-gray-700 focus:border-primary rounded-lg py-5 px-4 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-                          placeholder="Paste YouTube, Vimeo, or social media video URL here..."
+                          placeholder="Paste YouTube or Vimeo video URL here..."
                           disabled={isProcessing}
                         />
                         <button 
@@ -142,7 +142,7 @@ export default function URLInput({ onSubmit, isProcessing }: URLInputProps) {
             />
           </svg>
           <p className="text-xs text-gray-400">
-            Supported platforms: YouTube, Vimeo, Twitter, Facebook, Instagram, TikTok and more
+            Currently only YouTube and Vimeo URLs are supported
           </p>
         </div>
       </div>

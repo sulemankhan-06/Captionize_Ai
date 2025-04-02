@@ -123,7 +123,7 @@ export default function Results({ transcription, onRetry }: ResultsProps) {
                 <div key={caption.id} className="flex flex-col bg-card/40 p-4 rounded-md border border-gray-800">
                   <span className="text-white mb-1">{caption.id}</span>
                   <span className="text-primary text-sm mb-3">
-                    {formatTimestamp(caption.start)} --&gt; {formatTimestamp(caption.end)}
+                    {caption.start} --&gt; {caption.end}
                   </span>
                   <p className="text-gray-300">{caption.text}</p>
                 </div>
