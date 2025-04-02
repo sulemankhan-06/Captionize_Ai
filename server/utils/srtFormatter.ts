@@ -8,15 +8,17 @@ interface Word {
 /**
  * Convert seconds to SRT timestamp format (HH:MM:SS,mmm)
  * Note: SRT format uses comma as decimal separator
- * For short videos, always use 00 for hours to maintain standard format
  */
 function formatSrtTimestamp(seconds: number): string {
-  // For short clips, we'll always use 00 for hours
-  const minutes = Math.floor(seconds / 60);
+  // Calculate hours, minutes, seconds and milliseconds properly
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
   const ms = Math.floor((seconds % 1) * 1000);
   
-  return `00:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+  console.log(`Formatting timestamp: ${seconds}s → ${hours}h:${minutes}m:${secs}s,${ms}ms`);
+  
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
 }
 
 /**

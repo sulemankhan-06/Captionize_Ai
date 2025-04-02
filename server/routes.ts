@@ -293,6 +293,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Checking status for AssemblyAI transcription ${assemblyAiId}`);
       const transcriptionResult = await getTranscriptionStatus(assemblyAiId);
       
+      // Add debugging for timestamp inspection
+      if (transcriptionResult?.words && transcriptionResult.words.length > 0) {
+        const firstWord = transcriptionResult.words[0];
+        const lastWord = transcriptionResult.words[transcriptionResult.words.length - 1];
+        console.log(`DEBUG: First word timestamp - start: ${firstWord.start}s, end: ${firstWord.end}s`);
+        console.log(`DEBUG: Last word timestamp - start: ${lastWord.start}s, end: ${lastWord.end}s`);
+        console.log(`DEBUG: Audio duration from API: ${transcriptionResult.audio_duration}s`);
+      }
+      
       if (!transcriptionResult) {
         await dbStorage.updateTranscription(transcriptionId, {
           status: "failed",
