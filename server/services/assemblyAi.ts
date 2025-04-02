@@ -117,3 +117,38 @@ export async function getTranscriptionStatus(transcriptionId: string): Promise<T
     throw error;
   }
 }
+
+/**
+ * Get transcription in SRT format
+ */
+export async function getTranscriptionSrt(transcriptionId: string): Promise<string | null> {
+  try {
+    console.log(`Fetching SRT format for transcription ${transcriptionId}`);
+    
+    const response = await fetch(`${ASSEMBLY_AI_API_URL}/transcript/${transcriptionId}/srt`, {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      
+      // Get more detailed error information
+      const errorDetails = await response.text();
+      console.error(`AssemblyAI API SRT error: ${response.status} ${response.statusText}`, errorDetails);
+      
+      throw new Error(`Failed to get SRT: ${response.statusText} - ${errorDetails}`);
+    }
+    
+    // SRT format is returned as plain text
+    const srtContent = await response.text();
+    console.log(`SRT content fetched successfully with length: ${srtContent.length} characters`);
+    
+    return srtContent;
+  } catch (error) {
+    console.error('Error fetching SRT from AssemblyAI:', error);
+    throw error;
+  }
+}

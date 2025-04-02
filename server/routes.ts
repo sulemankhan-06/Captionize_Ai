@@ -4,8 +4,8 @@ import { storage as dbStorage } from "./storage";
 import { z } from "zod";
 import { urlSchema } from "../shared/schema";
 import { downloadVideoFromUrl, cleanupFile } from "./services/ytDlp";
-import { transcribeAudio, getTranscriptionStatus } from "./services/assemblyAi";
-import { formatToSRT } from "./utils/srtFormatter";
+import { transcribeAudio, getTranscriptionStatus, getTranscriptionSrt } from "./services/assemblyAi";
+// No longer need the formatter as we now use AssemblyAI's SRT endpoint directly
 import fs from "fs";
 import path from "path";
 import { tmpdir } from "os";
@@ -329,58 +329,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (transcriptionResult.status === "completed") {
-        // Format the transcription results to display and SRT format
-        const words = transcriptionResult.words || [];
+        console.log(`Transcription ${transcriptionId} is complete. Fetching SRT directly from AssemblyAI...`);
         
-        // Group words into captions (roughly 5-10 words per caption)
+        // Get SRT content directly from AssemblyAI
+        const srtContent = await getTranscriptionSrt(assemblyAiId);
+        
+        if (!srtContent) {
+          console.error(`Failed to get SRT content for ${assemblyAiId}`);
+          return res.status(500).json({ 
+            message: "Failed to get SRT content from transcription service",
+            error: "SRT endpoint returned empty response"
+          });
+        }
+        
+        // Parse SRT to extract captions for display
         const captions: Array<{id: number, start: string, end: string, text: string}> = [];
         
-        interface CaptionWord {
-          text: string;
-          start: number;
-          end: number;
-          confidence: number;
-        }
+        // Simple SRT parser
+        const srtLines = srtContent.split('\n');
+        let currentIndex = 1;
         
-        let currentCaption: {
-          id: number;
-          start: string;
-          end: string;
-          text: string;
-          words: CaptionWord[];
-        } = { id: 1, start: "", end: "", text: "", words: [] };
-        
-        for (let i = 0; i < words.length; i++) {
-          const word = words[i];
+        for (let i = 0; i < srtLines.length; i++) {
+          const line = srtLines[i];
           
-          if (currentCaption.words.length === 0) {
-            currentCaption.start = formatTime(word.start);
+          // Check if this is an index line (just a number)
+          if (/^\d+$/.test(line.trim())) {
+            const id = parseInt(line.trim());
+            
+            // Next line should be the timestamp
+            if (i + 1 < srtLines.length) {
+              const timestampLine = srtLines[i + 1];
+              const timestampMatch = timestampLine.match(/(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})/);
+              
+              if (timestampMatch) {
+                const start = timestampMatch[1];
+                const end = timestampMatch[2];
+                
+                // Next line(s) should be the text until empty line
+                let text = '';
+                let j = i + 2;
+                while (j < srtLines.length && srtLines[j].trim() !== '') {
+                  if (text) text += ' ';
+                  text += srtLines[j].trim();
+                  j++;
+                }
+                
+                if (text) {
+                  captions.push({
+                    id,
+                    start,
+                    end,
+                    text
+                  });
+                  
+                  currentIndex++;
+                }
+              }
+            }
           }
-          
-          currentCaption.words.push(word);
-          
-          // Every ~7 words or on punctuation, create a new caption
-          if (currentCaption.words.length >= 7 || 
-              (word.text.match(/[.!?]$/) && currentCaption.words.length > 3) || 
-              i === words.length - 1) {
-            
-            // Set the end time to the last word's end time
-            currentCaption.end = formatTime(word.end);
-            currentCaption.text = currentCaption.words.map(w => w.text).join(' ');
-            
-            captions.push({
-              id: currentCaption.id,
-              start: currentCaption.start,
-              end: currentCaption.end,
-              text: currentCaption.text
-            });
-            
-            currentCaption = { id: captions.length + 1, start: "", end: "", text: "", words: [] };
-          }
         }
-        
-        // Generate SRT content
-        const srtContent = formatToSRT(words);
         
         // Update our stored transcription
         const updatedTranscription = await dbStorage.updateTranscription(transcriptionId, {
@@ -434,6 +441,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 }
 
 // Helper function to format time in seconds to display
+// Note: This is no longer used since we now get SRT format directly from AssemblyAI
+// but kept for reference or potential future use
 function formatTime(seconds: number): string {
   // Format in proper SRT format: HH:MM:SS,mmm
   const hours = Math.floor(seconds / 3600);
