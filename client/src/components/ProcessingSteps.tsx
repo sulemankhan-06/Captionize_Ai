@@ -12,7 +12,7 @@ export default function ProcessingSteps({ progress = 0, status = "idle" }: Proce
   const allComplete = status === "completed";
   
   return (
-    <div className="mb-8">
+    <div className="mb-4">
       {status === "processing" && (
         <div className="mb-6">
           <div className="flex justify-between text-sm mb-1">

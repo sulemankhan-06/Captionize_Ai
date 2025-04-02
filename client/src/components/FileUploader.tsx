@@ -146,7 +146,6 @@ export default function FileUploader({ onUploadComplete, isProcessing }: FileUpl
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        onClick={handleSelectFileClick}
       >
         <input
           type="file"
@@ -178,13 +177,36 @@ export default function FileUploader({ onUploadComplete, isProcessing }: FileUpl
               <span className="font-medium">{selectedFile.name}</span>
             ) : (
               <>
-                <span className="font-medium">Click to upload</span> or drag and drop
+                <span className="font-medium">Drag and drop</span> your file here
                 <p className="mt-1 text-xs text-gray-400">
                   MP3, WAV, MP4, WebM up to 100MB
                 </p>
               </>
             )}
           </div>
+          
+          {!selectedFile && (
+            <Button 
+              className="mt-4 bg-gradient-to-r from-primary to-purple-500 hover:from-blue-600 hover:to-purple-600"
+              onClick={handleSelectFileClick}
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4 mr-2" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M15 13l-3-3m0 0l-3 3m3-3v12" 
+                />
+              </svg>
+              Choose File
+            </Button>
+          )}
         </div>
       </div>
       

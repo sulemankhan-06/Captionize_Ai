@@ -96,11 +96,14 @@ export default function Results({ transcription, onRetry }: ResultsProps) {
             </div>
             
             <div className="flex mt-3 md:mt-0 gap-3">
-              <button className="bg-card hover:bg-gray-700 text-gray-300 py-2 px-4 rounded-lg text-sm transition-colors flex items-center gap-2">
+              <button 
+                className="bg-card hover:bg-gray-700 text-gray-300 py-2 px-4 rounded-lg text-sm transition-colors flex items-center gap-2"
+                onClick={onRetry}
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
                 </svg>
-                Edit
+                New Transcription
               </button>
               <button 
                 className="bg-gradient-to-r from-primary to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
@@ -118,7 +121,7 @@ export default function Results({ transcription, onRetry }: ResultsProps) {
             <div className="grid grid-cols-[auto_1fr] gap-3">
               {transcription.captions.map((caption) => (
                 <React.Fragment key={caption.id}>
-                  <div className="text-xs text-muted-foreground font-mono py-1 px-2">{caption.start}</div>
+                  <div className="text-xs text-muted-foreground font-mono py-1 px-2 whitespace-nowrap">{caption.start}</div>
                   <div className="bg-card rounded-lg p-3 mb-3">
                     <p className="text-gray-300">{caption.text}</p>
                   </div>

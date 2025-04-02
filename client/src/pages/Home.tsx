@@ -4,9 +4,6 @@ import URLInput from "@/components/URLInput";
 import FileUploader from "@/components/FileUploader";
 import ProcessingSteps from "@/components/ProcessingSteps";
 import Results from "@/components/Results";
-import Features from "@/components/Features";
-import HowItWorks from "@/components/HowItWorks";
-import Pricing from "@/components/Pricing";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -177,17 +174,7 @@ export default function Home() {
                 Transform any video into accurately transcribed captions with our advanced AI technology. 
                 Simply paste a URL and get professional-grade SRT files in seconds.
               </p>
-              <div className="flex flex-col md:flex-row justify-center gap-4">
-                <a href="#generate" className="bg-gradient-to-r from-primary to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white py-3 px-6 rounded-lg font-medium text-lg transition-all transform hover:scale-105">
-                  Try For Free
-                </a>
-                <button className="bg-dark-700 hover:bg-dark-600 text-gray-300 py-3 px-6 rounded-lg font-medium text-lg transition-colors flex items-center justify-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                  </svg>
-                  Watch Demo
-                </button>
-              </div>
+              {/* Buttons removed as requested */}
             </div>
             
             <div className="relative max-w-5xl mx-auto" id="generate">
@@ -237,10 +224,8 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        <Features />
-        <HowItWorks />
-        <Pricing />
+        
+        {/* Features, HowItWorks, and Pricing components removed as requested */}
       </main>
 
       <Footer />
