@@ -7,17 +7,15 @@ interface Word {
 
 /**
  * Convert seconds to SRT timestamp format (HH:MM:SS,mmm)
+ * Note: SRT format uses comma as decimal separator
  */
 function formatSrtTimestamp(seconds: number): string {
-  const date = new Date(0);
-  date.setSeconds(seconds);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds - (hours * 3600)) / 60);
+  const secs = Math.floor(seconds - (hours * 3600) - (minutes * 60));
+  const ms = Math.floor((seconds % 1) * 1000);
   
-  const hours = String(date.getUTCHours()).padStart(2, '0');
-  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-  const secs = String(date.getUTCSeconds()).padStart(2, '0');
-  const ms = String(date.getUTCMilliseconds()).padStart(3, '0');
-  
-  return `${hours}:${minutes}:${secs},${ms}`;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
 }
 
 /**

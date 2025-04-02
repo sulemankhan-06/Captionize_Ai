@@ -136,59 +136,128 @@ export default function FileUploader({ onUploadComplete, isProcessing }: FileUpl
   };
 
   return (
-    <div className="mb-6">
-      <div 
-        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-          isDragging 
-            ? 'border-primary bg-primary/10' 
-            : 'border-gray-600 hover:border-gray-500 hover:bg-gray-800/50'
-        }`}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-      >
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          onChange={onFileInputChange}
-          accept="audio/*,video/*"
-        />
-        
-        <div className="flex flex-col items-center justify-center space-y-2">
-          <div className="rounded-full bg-gray-800 p-3">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-6 w-6 text-primary" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" 
-              />
-            </svg>
-          </div>
-          <div className="text-sm text-gray-300">
-            {selectedFile ? (
-              <span className="font-medium">{selectedFile.name}</span>
-            ) : (
-              <>
-                <span className="font-medium">Drag and drop</span> your file here
-                <p className="mt-1 text-xs text-gray-400">
-                  MP3, WAV, MP4, WebM up to 100MB
-                </p>
-              </>
-            )}
-          </div>
+    <div className="mb-0">
+      <div className="flex flex-col space-y-4">
+        {/* Main upload area */}
+        <div 
+          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+            isDragging 
+              ? 'border-primary bg-primary/20' 
+              : selectedFile 
+                ? 'border-green-500 bg-green-500/10' 
+                : 'border-gray-500 hover:border-primary hover:bg-primary/10'
+          }`}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+          onClick={!selectedFile ? handleSelectFileClick : undefined}
+        >
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={onFileInputChange}
+            accept="audio/*,video/*"
+          />
           
-          {!selectedFile && (
-            <Button 
-              className="mt-4 bg-gradient-to-r from-primary to-purple-500 hover:from-blue-600 hover:to-purple-600"
-              onClick={handleSelectFileClick}
+          <div className="flex flex-col items-center justify-center space-y-3">
+            <div className={`rounded-full p-4 ${selectedFile ? 'bg-green-500/20' : 'bg-primary/20'}`}>
+              {selectedFile ? (
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-8 w-8 text-green-500" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M5 13l4 4L19 7" 
+                  />
+                </svg>
+              ) : (
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-8 w-8 text-primary" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" 
+                  />
+                </svg>
+              )}
+            </div>
+            
+            <div className="text-sm text-gray-200">
+              {selectedFile ? (
+                <>
+                  <span className="font-medium text-green-400">File selected:</span>
+                  <p className="font-medium mt-1">{selectedFile.name}</p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                  </p>
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-primary">Drag and drop</span> your audio or video file
+                  <p className="mt-2 text-sm text-gray-300">
+                    - or -
+                  </p>
+                  <Button 
+                    className="mt-3 bg-gradient-to-r from-primary to-purple-500 hover:from-blue-600 hover:to-purple-600"
+                    onClick={handleSelectFileClick}
+                    size="lg"
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-5 w-5 mr-2" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M15 13l-3-3m0 0l-3 3m3-3v12" 
+                      />
+                    </svg>
+                    Choose File
+                  </Button>
+                  <p className="mt-3 text-xs text-gray-400">
+                    Supports MP3, WAV, MP4, WebM up to 100MB
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Upload progress */}
+        {isUploading && (
+          <div className="mt-2">
+            <div className="flex justify-between text-sm text-gray-400 mb-1">
+              <span>Uploading file...</span>
+              <span>{uploadProgress}%</span>
+            </div>
+            <Progress value={uploadProgress} className="h-2" />
+          </div>
+        )}
+        
+        {/* Action buttons */}
+        {selectedFile && !isUploading && (
+          <div className="flex justify-end space-x-3">
+            <Button
+              onClick={() => setSelectedFile(null)}
+              variant="outline"
+              disabled={isProcessing}
             >
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
@@ -201,44 +270,47 @@ export default function FileUploader({ onUploadComplete, isProcessing }: FileUpl
                   strokeLinecap="round" 
                   strokeLinejoin="round" 
                   strokeWidth={2} 
-                  d="M15 13l-3-3m0 0l-3 3m3-3v12" 
+                  d="M6 18L18 6M6 6l12 12" 
                 />
               </svg>
-              Choose File
+              Cancel
             </Button>
-          )}
-        </div>
-      </div>
-      
-      {isUploading && (
-        <div className="mt-4">
-          <div className="flex justify-between text-sm text-gray-400 mb-1">
-            <span>Uploading...</span>
-            <span>{uploadProgress}%</span>
+            <Button
+              onClick={handleUpload}
+              disabled={isProcessing || isUploading}
+              className="bg-gradient-to-r from-primary to-purple-500 hover:from-blue-600 hover:to-purple-600"
+            >
+              {isProcessing ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-4 w-4 mr-2" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M14 5l7 7m0 0l-7 7m7-7H3" 
+                    />
+                  </svg>
+                  Generate Captions
+                </>
+              )}
+            </Button>
           </div>
-          <Progress value={uploadProgress} />
-        </div>
-      )}
-      
-      {selectedFile && !isUploading && (
-        <div className="mt-4 flex justify-end">
-          <Button
-            onClick={() => setSelectedFile(null)}
-            variant="outline"
-            className="mr-2"
-            disabled={isProcessing}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleUpload}
-            disabled={isProcessing || isUploading}
-            className="bg-gradient-to-r from-primary to-purple-500 hover:from-blue-600 hover:to-purple-600"
-          >
-            {isProcessing ? "Processing..." : "Generate Captions"}
-          </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

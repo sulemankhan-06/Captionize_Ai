@@ -6,9 +6,9 @@ interface ProcessingStepsProps {
 }
 
 export default function ProcessingSteps({ progress = 0, status = "idle" }: ProcessingStepsProps) {
-  const step1Active = status === "processing" && progress < 40;
-  const step2Active = status === "processing" && progress >= 40 && progress < 80;
-  const step3Active = status === "processing" && progress >= 80;
+  const step1Active = status === "processing" && progress < 35;
+  const step2Active = status === "processing" && progress >= 35 && progress < 75;
+  const step3Active = status === "processing" && progress >= 75;
   const allComplete = status === "completed";
   
   return (
@@ -24,9 +24,9 @@ export default function ProcessingSteps({ progress = 0, status = "idle" }: Proce
             className="h-2 bg-background"
           />
           <p className="text-sm text-gray-400 mt-2 text-center">
-            {progress < 40 && "Downloading and extracting audio..."}
-            {progress >= 40 && progress < 80 && "Processing audio with AI..."}
-            {progress >= 80 && progress < 95 && "Generating transcription..."}
+            {progress < 35 && "Downloading and extracting audio..."}
+            {progress >= 35 && progress < 75 && "Processing audio with AI..."}
+            {progress >= 75 && progress < 95 && "Generating transcription..."}
             {progress >= 95 && "Finalizing captions..."}
           </p>
         </div>

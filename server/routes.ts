@@ -421,25 +421,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 // Helper function to format time for display
 function formatTime(seconds: number): string {
-  const date = new Date(0);
-  date.setSeconds(seconds);
-  return date.toISOString().substring(11, 19);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds - (hours * 3600)) / 60);
+  const secs = Math.floor(seconds - (hours * 3600) - (minutes * 60));
+  const ms = Math.floor((seconds % 1) * 1000);
+  
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
 }
 
 // Helper function to calculate progress percentage
 function calculateProgress(status: string, previousProgress: number = 0): number {
   switch (status) {
-    case "queued":
-      return Math.max(previousProgress, 40);
+    case "queued": 
+      return Math.max(previousProgress, 20);
     case "processing":
-      // Increment progressively from 40 to 80 based on previous progress
-      if (previousProgress < 40) return 40;
-      if (previousProgress < 80) return previousProgress + 5; // Increment by 5%
-      return 80;
+      // More granular progress increments for better visual feedback
+      if (previousProgress < 20) return 20;
+      if (previousProgress < 35) return previousProgress + 3;
+      if (previousProgress < 55) return previousProgress + 2;
+      if (previousProgress < 75) return previousProgress + 3;
+      if (previousProgress < 95) return previousProgress + 1;
+      return 95; // Reserve 100% for completed
     case "completed":
       return 100;
     default:
-      // For unknown states, keep advancing if we already have progress
-      return Math.max(previousProgress, 25);
+      // For unknown states, start at 10%
+      return Math.max(previousProgress, 10);
   }
 }

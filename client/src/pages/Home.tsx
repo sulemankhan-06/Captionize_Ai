@@ -143,14 +143,21 @@ export default function Home() {
   };
 
   const handleRetry = () => {
-    if (transcription.sourceUrl) {
-      transcribeUrlMutation.mutate(transcription.sourceUrl);
-    } else {
-      setTranscription({
-        status: "idle",
-        progress: 0,
-      });
-    }
+    // Reset to idle state with better feedback
+    setTranscription({
+      status: "idle",
+      progress: 0,
+    });
+    
+    // Show a toast notification to confirm reset
+    toast({
+      title: "Ready for a new transcription",
+      description: "You can now submit a new URL or upload a file",
+      duration: 3000,
+    });
+    
+    // Scroll to top of page for better UX
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -183,7 +190,7 @@ export default function Home() {
                   <h2 className="text-xl md:text-2xl font-display font-bold mb-4 text-white">Generate Captions</h2>
                   
                   {transcription.status === "idle" ? (
-                    <Tabs defaultValue="url" className="mb-6">
+                    <Tabs defaultValue="url" className="mb-0">
                       <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="url">From URL</TabsTrigger>
                         <TabsTrigger value="file">Upload File</TabsTrigger>
