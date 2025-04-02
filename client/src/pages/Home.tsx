@@ -18,6 +18,7 @@ export type TranscriptionState = {
   captions?: Array<{
     id: number;
     start: string;
+    end: string;
     text: string;
   }>;
   error?: string;

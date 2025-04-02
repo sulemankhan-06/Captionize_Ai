@@ -324,7 +324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const words = transcriptionResult.words || [];
         
         // Group words into captions (roughly 5-10 words per caption)
-        const captions: Array<{id: number, start: string, text: string}> = [];
+        const captions: Array<{id: number, start: string, end: string, text: string}> = [];
         
         interface CaptionWord {
           text: string;
@@ -336,9 +336,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let currentCaption: {
           id: number;
           start: string;
+          end: string;
           text: string;
           words: CaptionWord[];
-        } = { id: 1, start: "", text: "", words: [] };
+        } = { id: 1, start: "", end: "", text: "", words: [] };
         
         for (let i = 0; i < words.length; i++) {
           const word = words[i];
@@ -354,14 +355,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               (word.text.match(/[.!?]$/) && currentCaption.words.length > 3) || 
               i === words.length - 1) {
             
+            // Set the end time to the last word's end time
+            currentCaption.end = formatTime(word.end);
             currentCaption.text = currentCaption.words.map(w => w.text).join(' ');
+            
             captions.push({
               id: currentCaption.id,
               start: currentCaption.start,
+              end: currentCaption.end,
               text: currentCaption.text
             });
             
-            currentCaption = { id: captions.length + 1, start: "", text: "", words: [] };
+            currentCaption = { id: captions.length + 1, start: "", end: "", text: "", words: [] };
           }
         }
         

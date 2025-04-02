@@ -50,6 +50,7 @@ export type Transcription = {
   captions?: Array<{
     id: number;
     start: string;
+    end: string;
     text: string;
   }>;
   error?: string;
