@@ -85,7 +85,7 @@ export default function Results({ transcription, onRetry }: ResultsProps) {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 pb-4 border-b border-gray-700">
             <div>
               <div className="flex items-center">
-                <h3 className="text-lg font-display font-medium text-white mr-3">Video Captions</h3>
+                <h3 className="text-lg font-display font-medium text-white mr-3">Preview Captions</h3>
                 {transcription.duration && (
                   <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-md">
                     {formatDuration(transcription.duration)}
@@ -117,15 +117,16 @@ export default function Results({ transcription, onRetry }: ResultsProps) {
             </div>
           </div>
           
-          <div className="mt-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
-            <div className="grid grid-cols-[auto_1fr] gap-3">
+          <div className="mt-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="flex flex-col space-y-6 font-mono">
               {transcription.captions.map((caption) => (
-                <React.Fragment key={caption.id}>
-                  <div className="text-xs text-muted-foreground font-mono py-1 px-2 whitespace-nowrap">{formatTimestamp(caption.start)}</div>
-                  <div className="bg-card rounded-lg p-3 mb-3">
-                    <p className="text-gray-300">{caption.text}</p>
-                  </div>
-                </React.Fragment>
+                <div key={caption.id} className="flex flex-col bg-card/40 p-4 rounded-md border border-gray-800">
+                  <span className="text-white mb-1">{caption.id}</span>
+                  <span className="text-primary text-sm mb-3">
+                    {formatTimestamp(caption.start)} --&gt; {formatTimestamp((parseFloat(caption.start) + 3).toString())}
+                  </span>
+                  <p className="text-gray-300">{caption.text}</p>
+                </div>
               ))}
             </div>
           </div>
