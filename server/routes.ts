@@ -37,7 +37,7 @@ const fileStorage = multer.diskStorage({
 const upload = multer({
   storage: fileStorage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit
+    fileSize: 5 * 1024 * 1024 * 1024, // 5GB limit
   },
   fileFilter: function (req, file, cb) {
     // Allow audio and video files
@@ -419,14 +419,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-// Helper function to format time for display
+// Helper function to format time for display exactly as received from AssemblyAI
 function formatTime(seconds: number): string {
-  // For short clips, always use MM:SS.mmm format without hours
-  const minutes = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  const ms = Math.floor((seconds % 1) * 1000);
-  
-  return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+  // For exact consistency with AssemblyAI API, just convert the seconds to string
+  return seconds.toString();
 }
 
 // Helper function to calculate progress percentage

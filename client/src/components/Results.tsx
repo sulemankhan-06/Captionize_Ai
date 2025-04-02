@@ -1,6 +1,6 @@
 import React from "react";
 import { TranscriptionState } from "@/pages/Home";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, formatTimestamp } from "@/lib/utils";
 
 interface ResultsProps {
   transcription: TranscriptionState;
@@ -121,7 +121,7 @@ export default function Results({ transcription, onRetry }: ResultsProps) {
             <div className="grid grid-cols-[auto_1fr] gap-3">
               {transcription.captions.map((caption) => (
                 <React.Fragment key={caption.id}>
-                  <div className="text-xs text-muted-foreground font-mono py-1 px-2 whitespace-nowrap">{caption.start}</div>
+                  <div className="text-xs text-muted-foreground font-mono py-1 px-2 whitespace-nowrap">{formatTimestamp(caption.start)}</div>
                   <div className="bg-card rounded-lg p-3 mb-3">
                     <p className="text-gray-300">{caption.text}</p>
                   </div>

@@ -54,12 +54,12 @@ export default function FileUploader({ onUploadComplete, isProcessing }: FileUpl
       return;
     }
     
-    // Check file size (limit to 100MB)
-    if (file.size > 100 * 1024 * 1024) {
+    // Check file size (limit to 5GB)
+    if (file.size > 5 * 1024 * 1024 * 1024) {
       toast({
         variant: "destructive",
         title: "File Too Large",
-        description: "Please upload a file smaller than 100MB.",
+        description: "Please upload a file smaller than 5GB.",
       });
       return;
     }
@@ -232,7 +232,7 @@ export default function FileUploader({ onUploadComplete, isProcessing }: FileUpl
                     Choose File
                   </Button>
                   <p className="mt-3 text-xs text-gray-400">
-                    Supports MP3, WAV, MP4, WebM up to 100MB
+                    Supports MP3, WAV, MP4, WebM up to 5GB
                   </p>
                 </>
               )}

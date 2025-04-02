@@ -21,3 +21,21 @@ export function formatDuration(seconds: number): string {
   
   return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
+
+/**
+ * Format raw seconds from AssemblyAI into a user-friendly timestamp
+ * Uses the exact seconds value as provided by the API but formats it for display
+ */
+export function formatTimestamp(secondsStr: string): string {
+  if (!secondsStr) return '';
+  
+  // Convert string to number
+  const seconds = parseFloat(secondsStr);
+  
+  // Format display for user readability
+  const minutes = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 1000);
+  
+  return `${minutes}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+}
