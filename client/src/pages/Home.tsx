@@ -29,9 +29,9 @@ export type TranscriptionState = {
   srtContent?: string;
 };
 
-// Helper function to determine if a status is "idle" or "processing"
+// Helper function to determine if a status is "processing" (not idle)
 function isActiveProcessing(status: "idle" | "processing" | "completed" | "failed"): boolean {
-  return status === "idle" || status === "processing";
+  return status === "processing";
 }
 
 export default function Home() {
