@@ -48,7 +48,7 @@ export async function downloadVideoFromUrl(url: string): Promise<VideoMetadata> 
     // Old command (w/ postprocess conversion to audio):
     // `${ytDlpPath} -S +size,+br,+res,+fps -x --audio-format mp3 --force-ipv4 --geo-bypass --no-check-certificate --extractor-retries 3 --ignore-errors -o "${outputTemplate}" "${url}"`
     const { stdout } = await execAsync(
-      `${ytDlpPath} -S +size,+br,+res,+fps --force-ipv4 --geo-bypass --no-check-certificate --extractor-retries 3 --ignore-errors -o "${outputTemplate}" "${url}"`,
+      `${ytDlpPath} -S +size,+br,+res,+fps -x --audio-format mp3 --force-ipv4 --geo-bypass --no-check-certificate --extractor-retries 3 --ignore-errors -o "${outputTemplate}" "${url}"`,
       { maxBuffer: 10 * 1024 * 1024 } // 10MB buffer for large outputs
     );
     

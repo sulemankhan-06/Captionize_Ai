@@ -36,6 +36,8 @@ const getAuthHeaders = (contentType?: string): Record<string, string> => {
 async function uploadAudioFile(filePath: string): Promise<string> {
   try {
     const fileContent = fs.readFileSync(filePath);
+
+    console.log("File Content:", fileContent);
     
     const response = await fetch(`${ASSEMBLY_AI_API_URL}/upload`, {
       method: 'POST',
