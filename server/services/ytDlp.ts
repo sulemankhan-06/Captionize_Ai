@@ -37,7 +37,7 @@ export async function downloadVideoFromUrl(url: string): Promise<VideoMetadata> 
     // -x extracts audio only
     // --audio-format mp3 converts to mp3 format
     // Using the latest yt-dlp executable we downloaded
-    const ytDlpPath = '/home/runner/bin/yt-dlp';
+    const ytDlpPath = 'yt-dlp';
     
     // Execute yt-dlp with additional options to help with YouTube restrictions
     // --force-ipv4 to avoid some IPv6 issues
@@ -45,8 +45,10 @@ export async function downloadVideoFromUrl(url: string): Promise<VideoMetadata> 
     // --no-check-certificate to bypass SSL verification issues
     // --extractor-retries 3 to retry extracting information up to 3 times
     // --ignore-errors to continue even if there are non-fatal errors
+    // Old command (w/ postprocess conversion to audio):
+    // `${ytDlpPath} -S +size,+br,+res,+fps -x --audio-format mp3 --force-ipv4 --geo-bypass --no-check-certificate --extractor-retries 3 --ignore-errors -o "${outputTemplate}" "${url}"`
     const { stdout } = await execAsync(
-      `${ytDlpPath} -S +size,+br,+res,+fps -x --audio-format mp3 --force-ipv4 --geo-bypass --no-check-certificate --extractor-retries 3 --ignore-errors -o "${outputTemplate}" "${url}"`,
+      `${ytDlpPath} -S +size,+br,+res,+fps --force-ipv4 --geo-bypass --no-check-certificate --extractor-retries 3 --ignore-errors -o "${outputTemplate}" "${url}"`,
       { maxBuffer: 10 * 1024 * 1024 } // 10MB buffer for large outputs
     );
     

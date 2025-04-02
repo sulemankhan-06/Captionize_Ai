@@ -13,9 +13,9 @@ const getAuthHeaders = (contentType?: string): Record<string, string> => {
     throw new Error("AssemblyAI API key is missing. Please set the ASSEMBLY_AI_API_KEY environment variable.");
   }
   
-  // Make sure to include "Bearer " prefix for the Authorization header
+  // AssemblyAI requires the API key directly as the Authorization header value (without Bearer prefix)
   const headers: Record<string, string> = {
-    'authorization': `Bearer ${ASSEMBLY_AI_API_KEY}`
+    'authorization': ASSEMBLY_AI_API_KEY
   };
   
   if (contentType) {
@@ -24,7 +24,7 @@ const getAuthHeaders = (contentType?: string): Record<string, string> => {
   
   console.log("Using AssemblyAI API headers:", { 
     ...headers, 
-    authorization: headers.authorization.startsWith('Bearer ') ? 'PRESENT (with Bearer prefix)' : 'MISSING BEARER PREFIX' 
+    authorization: headers.authorization ? 'PRESENT' : 'MISSING' 
   });
   
   return headers;
@@ -69,14 +69,11 @@ export async function transcribeAudio(filePath: string): Promise<string> {
       headers: getAuthHeaders('application/json'),
       body: JSON.stringify({
         audio_url: uploadUrl,
-        word_boost: ["AI", "caption", "transcription", "neural network"],
-        punctuate: true,
-        format_text: true,
-        dual_channel: false,
-        language_detection: true,
-        sentiment_analysis: false,
-        auto_highlights: true,
-        word_timestamps: true
+        // punctuate: true,
+        // format_text: true,
+        // language_detection: true,
+        // sentiment_analysis: false,
+        // auto_highlights: true,
       })
     });
     

@@ -1,6 +1,6 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage as dbStorage } from "./storage";
 import { z } from "zod";
 import { urlSchema } from "../shared/schema";
 import { downloadVideoFromUrl, cleanupFile } from "./services/ytDlp";
@@ -10,14 +10,148 @@ import fs from "fs";
 import path from "path";
 import { tmpdir } from "os";
 import { v4 as uuidv4 } from "uuid";
+import multer from "multer";
 
-// Ensure temporary directory exists for audio files
+// Ensure directories exist for audio/video files
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 const TEMP_DIR = path.join(tmpdir(), 'captionize-ai');
+
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
 if (!fs.existsSync(TEMP_DIR)) {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
 }
 
+// Configure multer for file uploads
+const fileStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, UPLOADS_DIR);
+  },
+  filename: function (req, file, cb) {
+    const uniqueFilename = `${uuidv4()}${path.extname(file.originalname)}`;
+    cb(null, uniqueFilename);
+  }
+});
+
+const upload = multer({
+  storage: fileStorage,
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    // Allow audio and video files
+    const validMimeTypes = [
+      'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg',
+      'video/mp4', 'video/mpeg', 'video/webm', 'video/quicktime'
+    ];
+    
+    if (validMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only audio and video files are allowed.'));
+    }
+  }
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Route to handle file uploads
+  app.post('/api/upload', upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      console.log(`Processing uploaded file: ${req.file.path}`);
+      
+      // Create a new transcription record to track progress
+      const newTranscription = await dbStorage.createTranscription({
+        sourceUrl: `file://${req.file.originalname}`,
+        title: `Uploaded file: ${req.file.originalname}`
+      });
+      
+      // Update with initial progress
+      await dbStorage.updateTranscription(newTranscription.id, {
+        progress: 40 // Skip the download step as file is already uploaded
+      });
+      
+      // Send audio to AssemblyAI for transcription
+      console.log(`Sending uploaded file to AssemblyAI for transcription`);
+      
+      try {
+        const transcriptionId = await transcribeAudio(req.file.path);
+        
+        // Update transcription with AssemblyAI ID and progress
+        await dbStorage.updateTranscription(newTranscription.id, {
+          metadata: { 
+            assemblyAiId: transcriptionId,
+            originalFilename: req.file.originalname,
+            originalFilePath: req.file.path
+          },
+          progress: 66 // Indicate progress after submission to AssemblyAI
+        });
+        
+        // Return the transcription ID and initial status
+        res.status(200).json({
+          id: newTranscription.id,
+          status: "processing",
+          sourceUrl: `file://${req.file.originalname}`,
+          progress: 66,
+          title: `Uploaded file: ${req.file.originalname}`
+        });
+        
+        // Note: We don't clean up the file immediately as it may be needed for retry
+      } catch (apiError: any) {
+        console.error('Error with AssemblyAI transcription:', apiError);
+        
+        // Handle authorization issues
+        if (apiError.message && (
+            apiError.message.includes('authorization') || 
+            apiError.message.includes('Unauthorized') || 
+            apiError.message.includes('API key')
+          )) {
+          await dbStorage.updateTranscription(newTranscription.id, {
+            status: "failed",
+            error: "Authorization failed with transcription service. Please check API key."
+          });
+          
+          res.status(401).json({ 
+            message: "Authorization failed with transcription service. Please check API key.",
+            id: newTranscription.id,
+            status: "failed"
+          });
+          return;
+        }
+        
+        // Handle other API errors
+        await dbStorage.updateTranscription(newTranscription.id, {
+          status: "failed",
+          error: `Transcription service error: ${apiError.message || 'Unknown error'}`
+        });
+        
+        res.status(500).json({ 
+          message: "Failed to process audio with transcription service",
+          error: apiError.message || 'Unknown error',
+          id: newTranscription.id,
+          status: "failed"
+        });
+        
+        // Clean up the file on error
+        cleanupFile(req.file.path);
+      }
+    } catch (error) {
+      console.error('Error processing file upload:', error);
+      res.status(500).json({ 
+        message: "An error occurred while processing your file",
+        error: error instanceof Error ? error.message : String(error)
+      });
+      
+      // Clean up the file if it exists
+      if (req.file) {
+        cleanupFile(req.file.path);
+      }
+    }
+  });
   // Route to handle transcription requests
   app.post('/api/transcribe', async (req, res) => {
     try {
@@ -32,7 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Processing transcription request for URL: ${url}`);
       
       // Create a new transcription record first to track progress
-      const newTranscription = await storage.createTranscription({
+      const newTranscription = await dbStorage.createTranscription({
         sourceUrl: url,
         title: "Processing..."
       });
@@ -46,7 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!metadata || !fs.existsSync(tempAudioPath)) {
         // Update transcription status to failed
-        await storage.updateTranscription(newTranscription.id, {
+        await dbStorage.updateTranscription(newTranscription.id, {
           status: "failed",
           error: "Failed to extract audio from the provided URL"
         });
@@ -57,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update transcription with metadata
-      await storage.updateTranscription(newTranscription.id, {
+      await dbStorage.updateTranscription(newTranscription.id, {
         title: metadata.title || "Video Transcription",
         duration: metadata.duration,
         progress: 33 // Indicate progress after audio extraction
@@ -70,7 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const transcriptionId = await transcribeAudio(tempAudioPath);
         
         // Update transcription with AssemblyAI ID and progress
-        await storage.updateTranscription(newTranscription.id, {
+        await dbStorage.updateTranscription(newTranscription.id, {
           metadata: { assemblyAiId: transcriptionId },
           progress: 66 // Indicate progress after submission to AssemblyAI
         });
@@ -83,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             apiError.message.includes('Unauthorized') || 
             apiError.message.includes('API key')
           )) {
-          await storage.updateTranscription(newTranscription.id, {
+          await dbStorage.updateTranscription(newTranscription.id, {
             status: "failed",
             error: "Authorization failed with transcription service. Please check API key."
           });
@@ -97,7 +231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Handle other API errors
-        await storage.updateTranscription(newTranscription.id, {
+        await dbStorage.updateTranscription(newTranscription.id, {
           status: "failed",
           error: `Transcription service error: ${apiError.message || 'Unknown error'}`
         });
@@ -139,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transcriptionId = req.params.id;
       
       // First get our stored transcription
-      const storedTranscription = await storage.getTranscription(transcriptionId);
+      const storedTranscription = await dbStorage.getTranscription(transcriptionId);
       
       if (!storedTranscription) {
         return res.status(404).json({ message: "Transcription not found" });
@@ -160,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transcriptionResult = await getTranscriptionStatus(assemblyAiId);
       
       if (!transcriptionResult) {
-        await storage.updateTranscription(transcriptionId, {
+        await dbStorage.updateTranscription(transcriptionId, {
           status: "failed",
           error: "Transcription not found at AssemblyAI"
         });
@@ -174,7 +308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const errorMsg = "Transcription failed: " + (transcriptionResult.error || "Unknown error");
         
         // Update our stored transcription
-        await storage.updateTranscription(transcriptionId, {
+        await dbStorage.updateTranscription(transcriptionId, {
           status: "failed",
           error: errorMsg
         });
@@ -235,7 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const srtContent = formatToSRT(words);
         
         // Update our stored transcription
-        const updatedTranscription = await storage.updateTranscription(transcriptionId, {
+        const updatedTranscription = await dbStorage.updateTranscription(transcriptionId, {
           status: "completed",
           progress: 100,
           captions,
@@ -259,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Transcription ${transcriptionId} status: ${transcriptionResult.status}, progress: ${storedTranscription.progress} -> ${progress}`);
       
       // Update progress in our stored transcription
-      await storage.updateTranscription(transcriptionId, {
+      await dbStorage.updateTranscription(transcriptionId, {
         progress
       });
       

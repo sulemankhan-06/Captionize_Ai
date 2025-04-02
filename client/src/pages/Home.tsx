@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import URLInput from "@/components/URLInput";
+import FileUploader from "@/components/FileUploader";
 import ProcessingSteps from "@/components/ProcessingSteps";
 import Results from "@/components/Results";
 import Features from "@/components/Features";
@@ -10,6 +11,7 @@ import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export type TranscriptionState = {
   id?: string;
@@ -26,6 +28,11 @@ export type TranscriptionState = {
   duration?: number;
   srtContent?: string;
 };
+
+// Helper function to determine if a status is "idle" or "processing"
+function isActiveProcessing(status: "idle" | "processing" | "completed" | "failed"): boolean {
+  return status === "idle" || status === "processing";
+}
 
 export default function Home() {
   const { toast } = useToast();
@@ -188,7 +195,33 @@ export default function Home() {
                 <div className="bg-card p-6 rounded-lg">
                   <h2 className="text-xl md:text-2xl font-display font-bold mb-4 text-white">Generate Captions</h2>
                   
-                  <URLInput onSubmit={handleURLSubmit} isProcessing={transcription.status === "processing"} />
+                  {transcription.status === "idle" ? (
+                    <Tabs defaultValue="url" className="mb-6">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="url">From URL</TabsTrigger>
+                        <TabsTrigger value="file">Upload File</TabsTrigger>
+                      </TabsList>
+                      
+                      {/* Define a local variable to satisfy TypeScript */}
+                      {(() => {
+                        // Using our helper function to check status
+                        const isProcessingNow = isActiveProcessing(transcription.status);
+                        return (
+                          <>
+                            <TabsContent value="url" className="mt-4">
+                              <URLInput onSubmit={handleURLSubmit} isProcessing={isProcessingNow} />
+                            </TabsContent>
+                            <TabsContent value="file" className="mt-4">
+                              <FileUploader 
+                                onUploadComplete={(id) => startPolling(id)} 
+                                isProcessing={isProcessingNow} 
+                              />
+                            </TabsContent>
+                          </>
+                        );
+                      })()}
+                    </Tabs>
+                  ) : null}
                   
                   <ProcessingSteps 
                     progress={transcription.progress} 
